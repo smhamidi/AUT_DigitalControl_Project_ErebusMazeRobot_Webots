@@ -123,6 +123,77 @@ def get_all_visible_victims():
         allVisibleVictims.append(get_camera_visible_victims(camera))
     return allVisibleVictims
 
+def getObjectDistance(position):
+    # calculating the Euclidean distance to object
+    return math.sqrt((position[0] ** 2) + (position[2] ** 2))
+
+def getClosestVictim(victims):
+    # getting the closest victim to the robot
+    shortestDistance = 999
+    closestVictim = []
+
+    for victim in victims:
+        dist = getObjectDistance(victim[0])
+        if dist < shortestDistance:
+            shortestDistance = dist
+            closestVictim = victim
+
+    return closestVictim
+
+def turn_right_to_victim():
+    #set left wheel speed
+    wheelsSpeed[0] = 1 * MAX_VELOCITY
+    #set right wheel speed
+    wheelsSpeed[1] = 0.8 * MAX_VELOCITY
+
+def turn_left_to_victim():
+    #set left wheel speed
+    wheelsSpeed[0] = 0.8 * MAX_VELOCITY
+    #set right wheel speed
+    wheelsSpeed[1] = 1 * MAX_VELOCITY
+
+def turnToVictim(victim):
+    if(victim[2] == RCamera):
+        turning_right()
+    elif(victim[2] == LCamera):
+        turning_left()
+    else:
+        # [x,y]
+        position_on_image = victim[1]
+
+        width = FCamera.getWidth()
+        center = width / 2
+
+        victim_x_position = position_on_image[0]
+        dx = center - victim_x_position
+
+        if dx < 0:
+            turn_right_to_victim()
+        else:
+            turn_left_to_victim()
+
+def nearObject(position):
+    return getObjectDistance(position)  < 0.10
+
+def stop():
+    #set left wheel speed
+    wheelsSpeed[0] = 0
+    #set right wheel speed
+    wheelsSpeed[1] = 0
+
+def sendMessage(robot_type, v1, v2, v3):
+    message = struct.pack('i i i c', robot_type, v1, v2, v3)
+    emitter.send(message)
+
+def sendVictimMessage():
+    global messageSent
+    position = location.getValues()
+
+    if not messageSent:
+        #robot type, position x cm, position z cm, victim type
+        sendMessage(0, int(position[0] * 100), int(position[2] * 100), b'H')
+        messageSent = True
+
 def stop_at_vicim():
     # stopping at the closest victim and report
     global messageSent
@@ -144,6 +215,21 @@ def stop_at_vicim():
 
     if not foundVictim:
         messageSent = False
+
+def avoidTiles():
+    global duration, startTime
+    tileColor = colorSensor.getImage()
+
+    if tileColor == BLACKHOLE_COLOR or tileColor == SWAMP_COLOR:
+        move_backwards()
+        startTime = robot.getTime()
+        duration = 2
+
+def move_backwards():
+    #set left wheel speed
+    wheelsSpeed[0] = -0.5 * MAX_VELOCITY
+    #set right wheel speed
+    wheelsSpeed[1] = -0.7 * MAX_VELOCITY
 
 ############################################
 #####  MAIN PROGRAM LOOP STARTS HERE   #####
